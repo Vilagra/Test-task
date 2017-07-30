@@ -14,7 +14,7 @@ import java.net.UnknownHostException;
 //start on PC after Android app is launched
 public class TcpClient {
     static int firstServerPort = 56001;
-    static String address ="192.168.0.101"; // IP of my phone
+    static String address ="192.168.0.100"; // IP of my phone
     public static void main(String[] args) {
         for (int i = 0; i < 48; i++) {
             final int i1 = i;
@@ -23,13 +23,14 @@ public class TcpClient {
                 public void run() {
                     try {
                         InetAddress ip = InetAddress.getByName(address);
-                        Socket socket = new Socket(ip, firstServerPort + i1);
+                        Socket socket = new Socket(ip, firstServerPort);
                         InputStream inputStream = socket.getInputStream();
                         OutputStream outputStream = socket.getOutputStream();
                         outputStream.write(new byte[254]); // send start package
                         outputStream.flush();
                         while (true) {
                             byte[] bufferOut = new byte[254];
+                            bufferOut[0] = (byte) i1;
                             byte[] bufferIn = new byte[254];
                             inputStream.read(bufferIn);
                             outputStream.write(bufferOut);

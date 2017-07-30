@@ -9,9 +9,11 @@ import android.widget.TextView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 public class ServerActivity extends AppCompatActivity {
@@ -38,65 +40,67 @@ public class ServerActivity extends AppCompatActivity {
     }
 
     private void runServers() {
-        for (int i = 0; i < numberOfServers; i++) {
-            final int finalI = i;
-            Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while (!Thread.currentThread().isInterrupted()) {
-                        ServerSocket serverSocket = null;
-                        try {
-                            serverSocket = new ServerSocket(firstPort + finalI);
-                            Socket socket = serverSocket.accept();
-                            textViewServers.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    countOfServers++;
-                                    textViewServers.setText(String.valueOf(countOfServers));
-                                }
-                            });
-                            InputStream sin = socket.getInputStream();
-                            OutputStream sout = socket.getOutputStream();
-                            sin.read(new byte[254]); //get start package
-                            while (!Thread.currentThread().isInterrupted()) {
-                                TimeUnit.MILLISECONDS.sleep(500);
-                                byte[] bufferOut = new byte[254];
-                                byte[] bufferIn = new byte[254];
-                                sout.write(bufferOut);
-                                sout.flush();
-                                sin.read(bufferIn);
-                                textViewServers.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        countOfPackages++;
-                                        textViewPackages.setText(String.valueOf(countOfPackages));
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ServerSocket serverSocket = null;
+                try {
+                    serverSocket = new ServerSocket();
+                    serverSocket.setReuseAddress(true);
+                    serverSocket.bind(new InetSocketAddress(firstPort));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    while (true) {
+                        Log.d("beforeaccept","dddd");
+                        final Socket socket = serverSocket.accept();
+                        Log.d("afteraccept","dddd");
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                InputStream sin = null;
+                                OutputStream sout = null;
+                                try {
+                                    sin = socket.getInputStream();
+                                    sout = socket.getOutputStream();
+                                    sin.read(new byte[254]); //get start package
+                                    while (!Thread.currentThread().isInterrupted()) {
+                                        TimeUnit.MILLISECONDS.sleep(500);
+                                        byte[] bufferOut = new byte[254];
+                                        byte[] bufferIn = new byte[254];
+                                        sout.write(bufferOut);
+                                        sout.flush();
+                                        sin.read(bufferIn);
+                                        Log.d("read", Arrays.toString(bufferIn));
                                     }
-                                });
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        finally {
-                            textViewServers.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    countOfServers--;
-                                    textViewServers.setText(String.valueOf(countOfServers));
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                } finally {
+                                    try {
+                                        sin.close();
+                                        sout.close();
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            });
-                            try {
-                                serverSocket.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
                             }
-                        }
+                        }).start();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }finally {
+                    try {
+                        serverSocket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
-            });
-            t.start();
-        }
+            }
+        });
+        t.start();
     }
 
 
